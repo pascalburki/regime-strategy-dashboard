@@ -53,7 +53,7 @@ test["strategy_returns"] = test["returns"] * test["exposure"]
 total_strategy_realistic = test["strategy_returns"].sum()
 total_buyhold_realistic = test["returns"].sum()
 
-print(f"\n--- Realistic (train 2018-2020, test 2021-2023) ---")
+print(f"\nRealistic (train 2018-2020, test 2021-2023)")
 print(f"Strategy total return (log): {total_strategy_realistic:.4f}")
 print(f"Buy-and-hold total return (log): {total_buyhold_realistic:.4f}")
 
