@@ -130,22 +130,42 @@ with tab1:
     fig_assets.update_layout(paper_bgcolor="#0F1420", plot_bgcolor="#0F1420", font_color="#E8E4DA", legend_title="")
     st.plotly_chart(fig_assets, use_container_width=True)
 
+    max_corr = corr_matrix.where(~np.eye(len(corr_matrix), dtype=bool)).max().max()
+    max_pair = corr_matrix.where(~np.eye(len(corr_matrix), dtype=bool)).stack().idxmax()
+
     with st.container(border=True):
-        st.markdown("""
-        **Core finding:** diversification benefit collapses once uniform correlation exceeds 0.879,
-        regardless of volatility. Correlation, not volatility alone, is the primary driver of
-        diversification failure under stress.
+        st.markdown(f"""
+        **This portfolio:** the highest pairwise correlation is {max_corr:.2f} ({max_pair[0]}/{max_pair[1]}),
+        static over the full 2018-2023 period shown above.
+
+        **Related finding (from a separate analysis, not this dataset):** the companion
+        [Regime-Based Risk Instability](https://github.com/pascalburki/regime-risk-instability)
+        project found that diversification benefit collapses once *rolling* correlation exceeds
+        0.879 during stress periods — that figure is not derived from this static matrix and
+        shouldn't be read as a finding of this dashboard.
         """)
 
 with tab2:
     strategy_sharpe = strategy_returns.mean() / strategy_returns.std() * np.sqrt(252)
     buyhold_sharpe = buyhold_returns.mean() / buyhold_returns.std() * np.sqrt(252)
 
-    col1, col2, col3, col4 = st.columns(4)
+    strategy_dd = (strategy_returns.cumsum() - strategy_returns.cumsum().cummax()).min()
+    buyhold_dd = (buyhold_returns.cumsum() - buyhold_returns.cumsum().cummax()).min()
+
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
     col1.metric("Strategy Return", f"{strategy_returns.sum():.2%}")
     col2.metric("Buy & Hold Return", f"{buyhold_returns.sum():.2%}")
     col3.metric("Strategy Sharpe", f"{strategy_sharpe:.2f}", f"{strategy_sharpe - buyhold_sharpe:+.2f}")
     col4.metric("Buy & Hold Sharpe", f"{buyhold_sharpe:.2f}")
+    col5.metric("Strategy Max DD", f"{strategy_dd:.2%}", f"{strategy_dd - buyhold_dd:+.2%}", delta_color="inverse")
+    col6.metric("Buy & Hold Max DD", f"{buyhold_dd:.2%}")
+
+    st.caption(
+        f"Strategy backtest covers {strategy_returns.index.min().date()} to "
+        f"{strategy_returns.index.max().date()} ({len(strategy_returns)} trading days) — "
+        f"shorter than the 2018-2023 range shown in the Risk Analysis tab, since the walk-forward "
+        f"model needs training history before its first prediction."
+    )
 
     st.subheader("Strategy vs. Buy-and-Hold — Cumulative Returns")
     cumulative_strategy = strategy_returns.cumsum()

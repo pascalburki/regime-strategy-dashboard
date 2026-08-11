@@ -28,6 +28,7 @@ convergence_failures = 0
 total_windows = 0
 
 all_states = []
+all_fitted_means = []  # FIX: track per-window fitted means to verify state identity held across refits
 
 while current_date < hmm_data.index[-1]:
     next_date = current_date + pd.DateOffset(months=1)
@@ -61,12 +62,15 @@ while current_date < hmm_data.index[-1]:
     try:
         model.fit(train_data)
     except Exception:
+        # FIX-NOTE: silently drops this test month from the backtest entirely — see august5 for the same note.
         convergence_failures += 1
         current_date = next_date
         continue
 
     if not model.monitor_.converged:
         convergence_failures += 1
+
+    all_fitted_means.append(model.means_.copy())  # FIX: record for post-hoc identity check
 
     if model.monitor_.iter >= 190:  # close to the 200 limit
         print(f"Window ending {current_date}: used {model.monitor_.iter} iterations (near limit)")    
@@ -100,6 +104,15 @@ print(f"Strategy Sharpe: {strategy_sharpe:.4f}")
 print(f"Buy-and-hold Sharpe: {buyhold_sharpe:.4f}")
 print(f"Strategy max drawdown: {strategy_max_dd:.4f}")
 print(f"Buy-and-hold max drawdown: {buyhold_max_dd:.4f}")
+
+# FIX: same state-identity check as august5 — confirm the fixed init actually held
+# across every monthly refit rather than assuming it.
+means_array = np.array(all_fitted_means)
+print("\nState identity check across all windows:")
+for state in range(3):
+    returns_range = (means_array[:, state, 0].min(), means_array[:, state, 0].max())
+    vol_range = (means_array[:, state, 1].min(), means_array[:, state, 1].max())
+    print(f"  State {state}: return range {returns_range}, vol range {vol_range}")
 
 strategy_returns.to_csv("strategy_returns.csv")
 test_period_returns.to_csv("buyhold_returns.csv")
